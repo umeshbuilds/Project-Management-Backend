@@ -1,37 +1,69 @@
 import express from "express";
 import cors from "cors";
-import cookieParser  from "cookie-parser";
- 
+import cookieParser from "cookie-parser";
+import path from "path";
+import { fileURLToPath } from "url";
 
-const app = express()
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-// basic configurations
-app.use(express.json({limit:"16kb"}))
-app.use(express.urlencoded({extended:true,limit:"16kb"}))
-app.use(express.static("public"))
-app.use(cookieParser())
-// cors configuration
-app.use(cors({
-    origin: process.env.CORS_ORIGIN?.split(",") ||"http://localhost:5173",
-    credentials:true,
-    methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
-    allowedHeaders:["Content-Type","Authorization"]
-}))
+const app = express();
 
-//import the routes
-import healthCheckRouter from "./routes/healthCheck.routes.js"
-import authRouter from "./routes/auth.routes.js"
+// Basic middleware configurations
+app.use(express.json({ limit: "16kb" }));
+app.use(express.urlencoded({ extended: true, limit: "16kb" }));
+app.use(express.static("public"));
+app.use(cookieParser());
 
-app.use("/api/v1/healthCheck",healthCheckRouter)
-app.use("/api/v1/auth",authRouter)
-app.get("/",(req,res) =>{
-    res.send("welcome to basecampy")
-})
-app.get("/instagram",(req,res)=>{
-    res.send("this is an instagram page")
+// Static hosting for the frontend visualization dashboard
+app.use("/frontend", express.static(path.join(__dirname, "frontend")));
+
+// Robust CORS configuration supporting dev tools, Postman, file:// and frontend origin
+app.use(
+    cors({
+        origin: function (origin, callback) {
+            // Allow requests with no origin (e.g. mobile apps, curl, file://) or localhost origins
+            if (
+                !origin ||
+                origin.startsWith("http://localhost") ||
+                origin.startsWith("http://127.0.0.1") ||
+                origin === "null"
+            ) {
+                return callback(null, true);
+            }
+            return callback(null, true);
+        },
+        credentials: true,
+        methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allowedHeaders: ["Content-Type", "Authorization"]
+    })
+);
+
+// Import API routes
+import healthCheckRouter from "./routes/healthCheck.routes.js";
+import authRouter from "./routes/auth.routes.js";
+import projectRouter from "./routes/project.routes.js";
+import taskRouter from "./routes/task.routes.js";
+import noteRouter from "./routes/note.routes.js";
+
+// Mount API routes
+app.use("/api/v1/healthCheck", healthCheckRouter);
+app.use("/api/v1/healthcheck", healthCheckRouter);
+app.use("/api/v1/auth", authRouter);
+app.use("/api/v1/projects", projectRouter);
+app.use("/api/v1/tasks", taskRouter);
+app.use("/api/v1/notes", noteRouter);
+
+// Root and utility routes
+app.get("/", (req, res) => {
+    res.redirect("/frontend");
 });
 
-// Error handling middleware
+app.get("/instagram", (req, res) => {
+    res.send("this is an instagram page");
+});
+
+// Centralized error handling middleware
 app.use((err, req, res, next) => {
     const statusCode = err.statusCode || 500;
     const message = err.message || "Internal Server Error";

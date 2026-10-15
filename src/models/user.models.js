@@ -98,13 +98,13 @@ userSchema.methods.generateRefreshToken = function(){
 
 userSchema.methods.generateTemporaryToken = function(){
   const unHashedToken = crypto.randomBytes(20).toString("hex")
-  const hasheedToken = crypto
+  const hashedToken = crypto
   .createHash("sha256")
   .update(unHashedToken)
   .digest("hex")
 
 const tokenExpiry = Date.now()+(20*60*1000) //20mins
-return {unHashedToken,hasheedToken,tokenExpiry}
+return {unHashedToken,hashedToken,tokenExpiry}
 };
 
 export const User = mongoose.model("User",userSchema)
